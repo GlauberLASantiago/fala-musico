@@ -10,7 +10,413 @@
     <style>
         :root {
             --bg-color: #f8fafc;
+            --card-bg: #ffffff;<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digitador por Voz - v1.4</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
+    
+    <style>
+        :root {
+            --bg-color: #f8fafc;
             --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --active: #dc2626;
+            --active-hover: #b91c1c;
+            --border-color: #cbd5e1;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            max-width: 700px;
+            width: 100%;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+
+        .version-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #e2e8f0;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        header {
+            text-align: center;
+            padding-top: 10px;
+        }
+
+        h1 {
+            font-size: 1.6rem;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .settings-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            background-color: var(--bg-color);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .setting-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background-color: white;
+            font-size: 0.95rem;
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #btn-start {
+            background-color: var(--primary);
+            color: white;
+            flex: 1;
+            min-width: 180px;
+        }
+
+        #btn-start:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #btn-start.listening {
+            background-color: var(--active);
+        }
+
+        #btn-start.listening:hover {
+            background-color: var(--active-hover);
+        }
+
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .dot.active {
+            background-color: #16a34a;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            padding: 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1.1rem; /* Controlado via JS também */
+            line-height: 1.5;
+            color: var(--text-main);
+            background-color: #fff;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus {
+            border-color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="version-badge">v1.4</div>
+
+        <header>
+            <h1>Digitador por Voz</h1>
+        </header>
+
+        <!-- Barra de Configurações: Idioma e Tamanho do Texto -->
+        <div class="settings-bar">
+            <div class="setting-group">
+                <label for="lang-select">Idioma:</label>
+                <select id="lang-select">
+                    <option value="pt-BR" selected>Português (Brasil)</option>
+                    <option value="en-US">Inglês (EUA)</option>
+                    <option value="es-ES">Espanhol</option>
+                    <option value="fr-FR">Francês</option>
+                    <option value="it-IT">Italiano</option>
+                </select>
+            </div>
+            <div class="setting-group">
+                <label for="font-size">Tamanho do Texto:</label>
+                <input type="range" id="font-size" min="14" max="40" value="18">
+            </div>
+        </div>
+
+        <div class="status-container">
+            <div id="status-dot" class="dot"></div>
+            <span id="status-text">Microfone desativado</span>
+        </div>
+
+        <textarea id="text-output" placeholder="Clique em 'Iniciar Ditado' e comece a falar..."></textarea>
+
+        <div class="controls">
+            <button id="btn-start">Iniciar Ditado</button>
+            <button id="btn-copy" class="btn-secondary">Selecionar e Copiar</button>
+            <button id="btn-clear" class="btn-secondary">Limpar Texto</button>
+        </div>
+    </div>
+
+    <script>
+        let recognition;
+        let isListening = false;
+        
+        let textoConsolidado = '';
+        let textoTemporario = '';
+
+        const btnStart = document.getElementById('btn-start');
+        const btnCopy = document.getElementById('btn-copy');
+        const btnClear = document.getElementById('btn-clear');
+        const textOutput = document.getElementById('text-output');
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+        const langSelect = document.getElementById('lang-select');
+        const fontSizeSlider = document.getElementById('font-size');
+
+        // Controle de "Ganho Visual" (Tamanho da Fonte)
+        fontSizeSlider.addEventListener('input', (e) => {
+            textOutput.style.fontSize = e.target.value + 'px';
+        });
+
+        // Controle de Idioma
+        langSelect.addEventListener('change', () => {
+            if (recognition) {
+                recognition.lang = langSelect.value;
+                // Se estiver ouvindo, reiniciamos rapidamente para aplicar o novo idioma
+                if (isListening) {
+                    recognition.stop();
+                }
+            }
+        });
+
+        function atualizarTela() {
+            let textoDisplay = textoConsolidado;
+            if (textoTemporario) {
+                textoDisplay += (textoDisplay.length > 0 ? ' ' : '') + textoTemporario;
+            }
+            textOutput.value = textoDisplay;
+            textOutput.scrollTop = textOutput.scrollHeight;
+        }
+
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("Seu navegador não suporta reconhecimento de voz.");
+                return false;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = langSelect.value; // Pega o idioma selecionado
+            
+            // continuous = false é a solução definitiva para o bug de gagueira no Android/Tablets
+            recognition.continuous = false; 
+            recognition.interimResults = true;
+
+            recognition.onstart = () => {
+                isListening = true;
+                statusText.textContent = `Ouvindo (${langSelect.options[langSelect.selectedIndex].text})...`;
+                statusDot.classList.add('active');
+                btnStart.textContent = 'Parar Ditado';
+                btnStart.classList.add('listening');
+                
+                textoConsolidado = textOutput.value.trim();
+            };
+
+            recognition.onresult = (event) => {
+                let currentText = '';
+                let isFinal = false;
+
+                for (let i = 0; i < event.results.length; i++) {
+                    currentText += event.results[i][0].transcript;
+                    if (event.results[i].isFinal) {
+                        isFinal = true;
+                    }
+                }
+
+                textoTemporario = currentText.trim();
+                atualizarTela();
+
+                if (isFinal) {
+                    textoConsolidado += (textoConsolidado.length > 0 ? ' ' : '') + textoTemporario;
+                    textoTemporario = '';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Aviso: ", event.error);
+            };
+
+            recognition.onend = () => {
+                if (isListening) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Erro ao reiniciar loop:", e);
+                    }
+                } else {
+                    statusText.textContent = "Microfone desativado";
+                    statusDot.classList.remove('active');
+                    btnStart.textContent = 'Iniciar Ditado';
+                    btnStart.classList.remove('listening');
+                }
+            };
+
+            return true;
+        }
+
+        // Eventos dos Botões
+        btnStart.addEventListener('click', () => {
+            if (!recognition) {
+                if (!initSpeechRecognition()) return;
+            }
+
+            if (!isListening) {
+                try {
+                    // Garante que o idioma está atualizado antes de começar
+                    recognition.lang = langSelect.value;
+                    recognition.start();
+                } catch (e) {
+                    console.error("Erro ao iniciar:", e);
+                }
+            } else {
+                isListening = false;
+                recognition.stop();
+            }
+        });
+
+        btnCopy.addEventListener('click', () => {
+            if (!textOutput.value) return;
+            
+            textOutput.select();
+            textOutput.setSelectionRange(0, 999999);
+
+            navigator.clipboard.writeText(textOutput.value).then(() => {
+                const originalText = btnCopy.textContent;
+                btnCopy.textContent = "Copiado! ✓";
+                setTimeout(() => {
+                    btnCopy.textContent = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Erro ao copiar: ', err);
+            });
+        });
+
+        btnClear.addEventListener('click', () => {
+            textoConsolidado = '';
+            textoTemporario = '';
+            textOutput.value = '';
+        });
+        
+        // Define o tamanho da fonte inicial
+        textOutput.style.fontSize = fontSizeSlider.value + 'px';
+    </script>
+</body>
+</html>
+
             --text-main: #0f172a;
             --text-muted: #64748b;
             --primary: #2563eb;
