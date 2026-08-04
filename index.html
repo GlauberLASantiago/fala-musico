@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Digitador por Voz</title>
-    <!-- Favicon incorporado -->
+    <title>Digitador por Voz - v1.3</title>
+    <!-- Favicon incorporado conforme sua preferência -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎙️</text></svg>">
     
     <style>
@@ -48,10 +48,25 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            position: relative;
+        }
+
+        /* Indicador de Versão */
+        .version-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #e2e8f0;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
         }
 
         header {
             text-align: center;
+            padding-top: 10px;
         }
 
         h1 {
@@ -182,9 +197,12 @@
 <body>
 
     <div class="container">
+        <!-- Indicador de Versão -->
+        <div class="version-badge">v1.3 (Anti-Bug Mobile)</div>
+
         <header>
             <h1>Digitador por Voz</h1>
-            <p class="subtitle">Fale e o texto aparecerá continuamente na tela</p>
+            <p class="subtitle">Fale pausadamente e o texto aparecerá na tela</p>
         </header>
 
         <div class="status-container">
@@ -203,14 +221,16 @@
         </div>
 
         <div class="action-bar">
-            <span class="helper-text">Dica: O texto é acumulado automaticamente.</span>
+            <span class="helper-text">O microfone reinicia sozinho nas pausas para evitar erros no Android.</span>
         </div>
     </div>
 
     <script>
         let recognition;
         let isListening = false;
-        let savedText = ''; // Guarda o texto seguro de sessões/frases anteriores
+        
+        let textoConsolidado = ''; // Texto que já foi confirmado e salvo
+        let textoTemporario = '';  // Texto da frase que está sendo dita no momento
 
         const btnStart = document.getElementById('btn-start');
         const btnCopy = document.getElementById('btn-copy');
@@ -218,6 +238,16 @@
         const textOutput = document.getElementById('text-output');
         const statusText = document.getElementById('status-text');
         const statusDot = document.getElementById('status-dot');
+
+        function atualizarTela() {
+            // Junta o que já foi salvo com o que está sendo dito agora
+            let textoDisplay = textoConsolidado;
+            if (textoTemporario) {
+                textoDisplay += (textoDisplay.length > 0 ? ' ' : '') + textoTemporario;
+            }
+            textOutput.value = textoDisplay;
+            textOutput.scrollTop = textOutput.scrollHeight; // Rola para o final
+        }
 
         function initSpeechRecognition() {
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -228,62 +258,60 @@
 
             recognition = new SpeechRecognition();
             recognition.lang = 'pt-BR';
-            recognition.continuous = true;
+            
+            // A MÁGICA ESTÁ AQUI: continuous = false
+            // Isso força o motor do Android a limpar a memória após cada pausa que você faz,
+            // impedindo que ele duplique o texto repetidamente.
+            recognition.continuous = false; 
             recognition.interimResults = true;
 
             recognition.onstart = () => {
                 isListening = true;
-                statusText.textContent = "Ouvindo... Pode falar";
+                statusText.textContent = "Ouvindo...";
                 statusDot.classList.add('active');
                 btnStart.textContent = 'Parar Ditado';
                 btnStart.classList.add('listening');
                 
-                // Sempre que o microfone liga, salvamos o que já está na tela como "texto seguro"
-                savedText = textOutput.value.trim();
+                // Se o usuário digitou algo manualmente, nós assumimos isso como consolidado
+                textoConsolidado = textOutput.value.trim();
             };
 
             recognition.onresult = (event) => {
-                let currentFinal = '';
-                let currentInterim = '';
+                let currentText = '';
+                let isFinal = false;
 
-                // A correção do bug mora aqui: varremos SEMPRE desde o índice 0 (event.results.length)
-                // ignorando a contagem do navegador, que no tablet se perde fácil.
+                // Como continuous é false, ele foca apenas na frase atual (index 0)
                 for (let i = 0; i < event.results.length; i++) {
+                    currentText += event.results[i][0].transcript;
                     if (event.results[i].isFinal) {
-                        currentFinal += event.results[i][0].transcript;
-                    } else {
-                        currentInterim += event.results[i][0].transcript;
+                        isFinal = true;
                     }
                 }
 
-                // Monta a string final garantindo que os espaços não fiquem colados
-                let newText = savedText;
-                
-                if (newText.length > 0 && currentFinal.length > 0 && !newText.endsWith(' ') && !currentFinal.startsWith(' ')) {
-                    newText += ' ';
-                }
-                newText += currentFinal;
+                textoTemporario = currentText.trim();
+                atualizarTela();
 
-                if (newText.length > 0 && currentInterim.length > 0 && !newText.endsWith(' ') && !currentInterim.startsWith(' ')) {
-                    currentInterim = ' ' + currentInterim;
+                // Se o navegador disse que a frase acabou (você pausou a respiração)
+                if (isFinal) {
+                    textoConsolidado += (textoConsolidado.length > 0 ? ' ' : '') + textoTemporario;
+                    textoTemporario = ''; // Limpa o temporário
+                    // O evento 'onend' será chamado em seguida automaticamente
                 }
-
-                // Joga tudo para a tela simultaneamente
-                textOutput.value = newText + currentInterim;
-                textOutput.scrollTop = textOutput.scrollHeight;
             };
 
             recognition.onerror = (event) => {
                 console.warn("Aviso: ", event.error);
+                // Erros de "no-speech" são normais quando há silêncio.
             };
 
             recognition.onend = () => {
-                // Se desligar sozinho (por silêncio), liga de novo automaticamente
+                // Como configuramos continuous=false, ele sempre cai aqui nas pausas.
+                // Nosso código então religa o microfone automaticamente criando um loop perfeito.
                 if (isListening) {
                     try {
                         recognition.start();
                     } catch (e) {
-                        console.error("Erro ao reiniciar:", e);
+                        console.error("Erro ao reiniciar loop:", e);
                     }
                 } else {
                     statusText.textContent = "Microfone desativado";
@@ -318,7 +346,7 @@
             if (!textOutput.value) return;
             
             textOutput.select();
-            textOutput.setSelectionRange(0, 999999); // Suporte para mobile
+            textOutput.setSelectionRange(0, 999999);
 
             navigator.clipboard.writeText(textOutput.value).then(() => {
                 const originalText = btnCopy.textContent;
@@ -332,7 +360,8 @@
         });
 
         btnClear.addEventListener('click', () => {
-            savedText = '';
+            textoConsolidado = '';
+            textoTemporario = '';
             textOutput.value = '';
         });
     </script>
