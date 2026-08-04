@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reconhecimento de Notas Musicais</title>
+    <!-- Favicon incorporado via Data URI, conforme sua preferência -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎵</text></svg>">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger-color: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --success-color: #16a34a;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            max-width: 600px;
+            width: 100%;
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 14px 28px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #btn-start {
+            background-color: var(--primary-color);
+            color: white;
+            flex: 1;
+        }
+
+        #btn-start:hover {
+            background-color: var(--primary-hover);
+        }
+
+        #btn-start.listening {
+            background-color: var(--danger-color);
+        }
+
+        #btn-start.listening:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background-color: var(--bg-color);
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+        }
+
+        .dot.active {
+            background-color: var(--success-color);
+            animation: pulse 1.5s infinite;
+        }
+
+        .dot.processing {
+            background-color: #eab308;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+
+        .main-display {
+            text-align: center;
+            padding: 40px 20px;
+            background-color: var(--bg-color);
+            border-radius: var(--radius);
+            border: 2px dashed var(--border-color);
+        }
+
+        .note-display {
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: 8px;
+            min-height: 96px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .debug-info {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            min-height: 40px;
+        }
+
+        .history-section {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 8px;
+        }
+
+        .history-header h2 {
+            font-size: 1.2rem;
+            color: var(--text-main);
+        }
+
+        #btn-clear {
+            background-color: transparent;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+        }
+
+        #btn-clear:hover {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .history-list {
+            list-style: none;
+            max-height: 250px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .history-item {
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item:nth-child(even) {
+            background-color: var(--bg-color);
+        }
+
+        .time {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .note-name {
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        .confidence {
+            text-align: right;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 20px; }
+            .note-display { font-size: 3rem; }
+            .history-item { grid-template-columns: 1fr 1fr; gap: 8px;}
+            .confidence { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Reconhecimento de Notas Musicais</h1>
+            <p style="color: var(--text-muted); font-size: 0.95rem;">Treinamento de percepção musical via voz</p>
+        </header>
+
+        <div class="controls">
+            <button id="btn-start">Iniciar</button>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div id="status-dot" class="dot"></div>
+                <span id="status-text">Parado</span>
+            </div>
+            <div>Notas reconhecidas: <span id="note-counter" style="font-weight: 700;">0</span></div>
+        </div>
+
+        <div class="main-display">
+            <div id="note-display" class="note-display">--</div>
+            <div class="debug-info">
+                <div id="raw-text">Diga o nome de uma nota (ex: "Dó sustenido")</div>
+                <div id="confidence-text"></div>
+            </div>
+        </div>
+
+        <div class="history-section">
+            <div class="history-header">
+                <h2>Histórico (Últimas 20)</h2>
+                <button id="btn-clear">Limpar Histórico</button>
+            </div>
+            <ul id="history-list" class="history-list">
+                <!-- Itens injetados via JS -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Lógica Principal do Aplicativo
+         * Utiliza Web Speech API para reconhecimento e Web Audio API para síntese.
+         */
+
+        // 1. Tabela de frequências e dicionário de mapeamento
+        const frequencies = {
+            "C4": 261.63,
+            "C#4": 277.18,
+            "Db4": 277.18,
+            "D4": 293.66,
+            "D#4": 311.13,
+            "Eb4": 311.13,
+            "E4": 329.63,
+            "F4": 349.23,
+            "F#4": 369.99,
+            "Gb4": 369.99,
+            "G4": 392.00,
+            "G#4": 415.30,
+            "Ab4": 415.30,
+            "A4": 440.00,
+            "A#4": 466.16,
+            "Bb4": 466.16,
+            "B4": 493.88
+        };
+
+        // Mapeamento de termos falados (em minúsculas) para a nota correspondente
+        const noteDictionary = {
+            "dó": { name: "C4", display: "Dó" },
+            "do": { name: "C4", display: "Dó" },
+            "dó sustenido": { name: "C#4", display: "Dó Sustenido" },
+            "do sustenido": { name: "C#4", display: "Dó Sustenido" },
+            "ré bemol": { name: "Db4", display: "Ré Bemol" },
+            "re bemol": { name: "Db4", display: "Ré Bemol" },
+            "ré": { name: "D4", display: "Ré" },
+            "re": { name: "D4", display: "Ré" },
+            "ré sustenido": { name: "D#4", display: "Ré Sustenido" },
+            "re sustenido": { name: "D#4", display: "Ré Sustenido" },
+            "mi bemol": { name: "Eb4", display: "Mi Bemol" },
+            "mi": { name: "E4", display: "Mi" },
+            "fá": { name: "F4", display: "Fá" },
+            "fa": { name: "F4", display: "Fá" },
+            "fá sustenido": { name: "F#4", display: "Fá Sustenido" },
+            "fa sustenido": { name: "F#4", display: "Fá Sustenido" },
+            "sol bemol": { name: "Gb4", display: "Sol Bemol" },
+            "sol": { name: "G4", display: "Sol" },
+            "sol sustenido": { name: "G#4", display: "Sol Sustenido" },
+            "lá bemol": { name: "Ab4", display: "Lá Bemol" },
+            "la bemol": { name: "Ab4", display: "Lá Bemol" },
+            "lá": { name: "A4", display: "Lá" },
+            "la": { name: "A4", display: "Lá" },
+            "lá sustenido": { name: "A#4", display: "Lá Sustenido" },
+            "la sustenido": { name: "A#4", display: "Lá Sustenido" },
+            "si bemol": { name: "Bb4", display: "Si Bemol" },
+            "si": { name: "B4", display: "Si" }
+        };
+
+        // 2. Variáveis de estado globais
+        let audioCtx;
+        let recognition;
+        let isListening = false;
+        let noteCount = 0;
+        let history = [];
+
+        // 3. Elementos do DOM
+        const btnStart = document.getElementById('btn-start');
+        const btnClear = document.getElementById('btn-clear');
+        const statusText = document.getElementById('status-text');
+        const statusDot = document.getElementById('status-dot');
+        const noteDisplay = document.getElementById('note-display');
+        const rawText = document.getElementById('raw-text');
+        const confidenceText = document.getElementById('confidence-text');
+        const historyList = document.getElementById('history-list');
+        const noteCounter = document.getElementById('note-counter');
+
+        // 4. Inicialização do Web Audio API (ocorre no primeiro clique para evitar bloqueios)
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // 5. Síntese Sonora com Envelope ADSR
+        function playNote(freq) {
+            if (!audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.type = 'sine'; // Onda senoidal para um som suave
+            osc.frequency.value = freq;
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            
+            // Envelope ADSR (Attack, Decay, Sustain, Release) - Total 500ms
+            gainNode.gain.cancelScheduledValues(now);
+            gainNode.gain.setValueAtTime(0, now);
+            
+            // Attack (0 a 1 em 50ms)
+            gainNode.gain.linearRampToValueAtTime(1, now + 0.05);
+            // Decay & Sustain (cai para 0.7 em 100ms)
+            gainNode.gain.exponentialRampToValueAtTime(0.7, now + 0.15);
+            // Release (esmaece até 0 nos últimos 150ms do total de 500ms)
+            gainNode.gain.setValueAtTime(0.7, now + 0.35);
+            gainNode.gain.linearRampToValueAtTime(0.01, now + 0.48);
+            gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+
+        // 6. Atualização da Interface
+        function updateUI(noteObj, transcript, confidence) {
+            // Atualiza display principal
+            noteDisplay.textContent = noteObj.display;
+            rawText.textContent = `Texto bruto: "${transcript}"`;
+            confidenceText.textContent = confidence ? `Confiança: ${(confidence * 100).toFixed(1)}%` : '';
+
+            // Atualiza contador
+            noteCount++;
+            noteCounter.textContent = noteCount;
+
+            // Cria item do histórico
+            const timeStr = new Date().toLocaleTimeString('pt-BR');
+            const historyItem = {
+                time: timeStr,
+                note: noteObj.display,
+                conf: confidence ? `${(confidence * 100).toFixed(0)}%` : 'N/A'
+            };
+
+            // Adiciona no início e limita a 20
+            history.unshift(historyItem);
+            if (history.length > 20) {
+                history.pop();
+            }
+
+            renderHistory();
+        }
+
+        function renderHistory() {
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const li = document.createElement('li');
+                li.className = 'history-item';
+                li.innerHTML = `
+                    <span class="time">${item.time}</span>
+                    <span class="note-name">${item.note}</span>
+                    <span class="confidence">${item.conf}</span>
+                `;
+                historyList.appendChild(li);
+            });
+        }
+
+        function setStatus(status) {
+            statusDot.className = 'dot';
+            if (status === 'Ouvindo') {
+                statusDot.classList.add('active');
+                statusText.textContent = 'Ouvindo...';
+            } else if (status === 'Processando') {
+                statusDot.classList.add('processing');
+                statusText.textContent = 'Processando...';
+            } else {
+                statusText.textContent = 'Parado';
+            }
+        }
+
+        // 7. Inicialização do Reconhecimento de Voz
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                alert("Seu navegador não suporta a Web Speech API. Por favor, use o Google Chrome ou Microsoft Edge.");
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.interimResults = false;
+            // Usamos false para continuous e reiniciamos manualmente no onend, 
+            // pois garante maior estabilidade em diferentes plataformas quando há pausas
+            recognition.continuous = false; 
+
+            recognition.onstart = () => {
+                setStatus('Ouvindo');
+            };
+
+            recognition.onaudiostart = () => {
+                // O microfone está captando
+            };
+
+            recognition.onsoundend = () => {
+                setStatus('Processando');
+            };
+
+            recognition.onresult = (event) => {
+                const result = event.results[event.results.length - 1];
+                let transcript = result[0].transcript.trim();
+                const confidence = result[0].confidence;
+
+                // Limpeza: remove pontuações finais e converte para minúsculas
+                let cleanedTranscript = transcript.toLowerCase().replace(/[.,!?;:]/g, '').trim();
+                
+                // Extrai a última palavra ou conjunto de palavras para facilitar o matching
+                // Verificamos se o texto dito contém alguma das chaves do nosso dicionário
+                let recognizedNote = null;
+                
+                // Ordenamos as chaves por tamanho (decrescente) para casar "dó sustenido" antes de "dó"
+                const keys = Object.keys(noteDictionary).sort((a, b) => b.length - a.length);
+                
+                for (let key of keys) {
+                    // Verifica se o texto limpo bate com a chave (exata ou contém como frase)
+                    // Usamos expressão regular para garantir que é a palavra inteira
+                    const regex = new RegExp(`\\b${key}\\b`, 'i');
+                    if (cleanedTranscript === key || regex.test(cleanedTranscript)) {
+                        recognizedNote = noteDictionary[key];
+                        break;
+                    }
+                }
+
+                if (recognizedNote) {
+                    // Toca a nota e atualiza UI
+                    const freq = frequencies[recognizedNote.name];
+                    playNote(freq);
+                    updateUI(recognizedNote, transcript, confidence);
+                } else {
+                    // Atualiza apenas os textos de debug se não reconheceu nenhuma nota válida
+                    rawText.textContent = `Texto ignorado: "${transcript}"`;
+                    confidenceText.textContent = '';
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Erro no reconhecimento: ", event.error);
+                // Erros como 'no-speech' são normais em ambientes silenciosos.
+                // O onend será chamado na sequência.
+            };
+
+            recognition.onend = () => {
+                // Se o usuário não clicou para parar, reinicia automaticamente
+                if (isListening) {
+                    try {
+                        recognition.start();
+                    } catch (e) {
+                        console.error("Tentativa de reiniciar reconhecimento falhou", e);
+                    }
+                } else {
+                    setStatus('Parado');
+                    btnStart.textContent = 'Iniciar';
+                    btnStart.classList.remove('listening');
+                }
+            };
+        }
+
+        // 8. Controles do Usuário
+        btnStart.addEventListener('click', () => {
+            if (!recognition) initSpeechRecognition();
+            initAudio(); // Inicializa/Desbloqueia Web Audio API
+
+            if (!isListening) {
+                isListening = true;
+                btnStart.textContent = 'Parar';
+                btnStart.classList.add('listening');
+                try {
+                    recognition.start();
+                } catch (e) {
+                    // Já iniciado
+                }
+            } else {
+                isListening = false;
+                recognition.stop();
+            }
+        });
+
+        btnClear.addEventListener('click', () => {
+            history = [];
+            renderHistory();
+            noteCount = 0;
+            noteCounter.textContent = '0';
+            noteDisplay.textContent = '--';
+            rawText.textContent = 'Diga o nome de uma nota (ex: "Dó sustenido")';
+            confidenceText.textContent = '';
+        });
+
+    </script>
+</body>
+</html>
